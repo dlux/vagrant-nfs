@@ -1,0 +1,4 @@
+vagrant destroy --force
+sleep 1
+vagrant up
+
