@@ -1,0 +1,12 @@
+language: python
+before_install:
+  - echo -e '[nsf]\nlocalhost' > hosts
+install:
+  - pip install ansible
+  - pip install rstcheck
+  - pip install bashate
+script:
+  - rstcheck README.rst
+  - bashate reload
+  - ansible-playbook --syntax-check -i hosts nfs.yml -vv
+

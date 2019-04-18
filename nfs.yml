@@ -10,7 +10,6 @@
       shell: |
         source /opt/common_functions
         UpdatePackageManager
-    # ADD optional task to set proxy
     - name: Install OS dependent packages
       package:
         name: "{{ ospackage }}"
