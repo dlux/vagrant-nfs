@@ -1,0 +1,41 @@
+---
+- hosts: nfs
+  gather_facts: yes
+  tasks:
+    - name: Update package manager 1/2
+      get_url:
+        url: https://raw.githubusercontent.com/dlux/InstallScripts/master/common_functions
+        dest: /opt
+    - name: Update package manager - might take long 2/2
+      shell: |
+        source /opt/common_functions
+        UpdatePackageManager
+    # ADD optional task to set proxy
+    - name: Install OS dependent packages
+      package:
+        name: "{{ ospackage }}"
+        state: present
+      with_items:
+        - 'git'
+        - 'vim'
+        - 'nfs-utils'
+      loop_control:
+        loop_var: ospackage
+    - name: Start NFS server services
+      service:
+        name: "{{ nfs_service }}"
+        state: started
+        enabled: yes
+      with_items:
+        - nfs-server.service
+      loop_control:
+        loop_var: nfs_service
+    - name: Create shared base folder
+      file:
+        name: /var/nfsshare
+        state: directory
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+    no_proxy: "{{ no_proxy }}"
+
