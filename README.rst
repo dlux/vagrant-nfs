@@ -5,6 +5,7 @@ vagrant-nfs
 Using NFS to share storage
 
 This example also uses vagrant ansible hence it must be installed on the host.
+Will use an extra disk configured as the storage disk
 
 To Run
 ------

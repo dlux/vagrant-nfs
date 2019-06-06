@@ -2,11 +2,18 @@
 - hosts: nfs
   gather_facts: yes
   tasks:
-    - name: Update package manager 1/2
+    - name: Update package manager 1/3
       get_url:
         url: https://raw.githubusercontent.com/dlux/InstallScripts/master/common_functions
         dest: /opt
-    - name: Update package manager - might take long 2/2
+    - name: Set proxy file - might take long 2/3
+      shell: |
+        source common_functions
+        SetProxy "{{ http_proxy }}"
+      args:
+        chdir: '/opt/'
+      when: http_proxy is defined
+    - name: Update package manager - might take long 3/3
       shell: |
         source /opt/common_functions
         UpdatePackageManager
@@ -15,7 +22,6 @@
         name: "{{ ospackage }}"
         state: present
       with_items:
-        - 'git'
         - 'vim'
         - 'nfs-utils'
       loop_control:
@@ -31,10 +37,41 @@
         loop_var: nfs_service
     - name: Create shared base folder
       file:
-        name: /var/nfsshare
+        name: /nfsshare
         state: directory
+        mode: '755'
+        owner: 'nfsnobody'
+        group: 'nfsnobody'
+    - name: Setup new disk - TODO: convert shell block into ansible tasks
+      shell: |
+        local_nfs='/nfsshare'
+        device_list=($(lsblk -n -p --output NAME | grep '^/'))
+        device=${device_list[1]}
+        fix=$(parted $device --script print 2>&1 | grep 'Error\|Warning')
+        [[ -n $fix_part ]] && sgdisk -e $device
+        parted -a optimal $device mkpart primary 0% 100%
+        partition=$(fdisk -l /dev/sdb |tail -1 |awk '{print $1}'|tr -d ' ')
+        partition="$device$partition"
+        mkfs.ext4 $partition
+        e4label $partition nfsshare
+        mount $partition $local_nfs
+        _u=$(blkid | grep $partition | awk -F 'UUID=' '{print $2}' |
+            awk -F '"' '{print $2}')
+         printf "UUID=$_u  $local_nfs  ext4  defaults  0  0" >> /etc/fstab
+    - name: Setup NFS exports
+      shell: |
+         str="/nfsshare 10.0.2.0/24(rw,sync,insecure,all_squash,subtree_check)"
+         printf $str >> /etc/exports
+         exportfs -arv
+         # Open firewalld ports
+         if [[ $(firewall-cmd --state) == 'running' ]]; then
+             firewall-cmd --permanent --zone=public --add-service=nfs
+             firewall-cmd --permanent --zone=public --add-service=mountd
+             firewall-cmd --permanent --zone=public --add-service=rpc-bind
+             firewall-cmd --reload
+         fi
+         showmount -e localhost
   environment:
-    http_proxy: "{{ http_proxy }}"
-    https_proxy: "{{ https_proxy }}"
-    no_proxy: "{{ no_proxy }}"
-
+    http_proxy: "http_proxy=http://proxy"
+    https_proxy: "http_proxy=http://proxy"
+    no_proxy: "10.0.0.0/8,192.168.0.0/16,localhost,127.0.0.0/8"

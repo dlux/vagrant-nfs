@@ -17,6 +17,14 @@ Vagrant.configure(2) do |config|
   config.vm.provider 'virtualbox' do |v|
     v.customize ['modifyvm', :id, '--memory', 1024 * 1 ]
     v.customize ["modifyvm", :id, "--cpus", 1]
+    disk = './secondDisk.vdi'
+    unless File.exist?(disk)
+        v.customize ['createhd', '--filename', disk, '--variant',\
+                     'Fixed', '--size', 2 * 1024]
+    end
+    # other attempts 'SATAController', 'SATA Controller', 'SATA'
+    v.customize ['storageattach', :id,  '--storagectl', 'IDE',
+                 '--port', 1, '--device', 0, '--type', 'hdd', '--medium', disk]
   end
   config.vm.provision 'ansible' do |s|
     s.playbook = 'nfs.yml'
@@ -30,7 +38,6 @@ Vagrant.configure(2) do |config|
     }
     s.raw_arguments = ["-vv"]
     s.become = true
-
   end
 
 end
