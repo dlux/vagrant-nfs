@@ -9,4 +9,6 @@ script:
   - rstcheck README.rst
   - bashate reload
   - ansible-playbook --syntax-check -i hosts nfs.yml -vv
+  - bashate storage.sh
+  - bashate client.sh
 

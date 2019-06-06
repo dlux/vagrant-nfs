@@ -42,8 +42,9 @@
         mode: '755'
         owner: 'nfsnobody'
         group: 'nfsnobody'
-    - name: Setup new disk - TODO: convert shell block into ansible tasks
+    - name: Setup new disk
       shell: |
+        # TODO: Convert shell block into ansible
         local_nfs='/nfsshare'
         device_list=($(lsblk -n -p --output NAME | grep '^/'))
         device=${device_list[1]}

@@ -2,6 +2,11 @@
 vagrant-nfs
 ===========
 
+.. image:: https://travis-ci.com/dlux/vagrant-nfs.svg?branch=master
+    :target: https://travis-ci.com/dlux/vagrant-nfs
+
+STATUS: **INCOMPLETE**
+
 Using NFS to share storage
 
 This example also uses vagrant ansible hence it must be installed on the host.
