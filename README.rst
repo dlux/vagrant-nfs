@@ -1,19 +1,34 @@
-===========
-vagrant-nfs
-===========
+===============
+vagrant-storage
+===============
 
-.. image:: https://travis-ci.com/dlux/vagrant-nfs.svg?branch=master
-    :target: https://travis-ci.com/dlux/vagrant-nfs
+.. image:: https://travis-ci.com/dlux/vagrant-storage.svg?branch=master
+    :target: https://travis-ci.com/dlux/vagrant-storage
 
-STATUS: **INCOMPLETE**
+STATUS: **COMPLETE: nfs,smb**
 
-Using NFS to share storage
+Example for diffent file system examples.
 
-This example also uses vagrant ansible hence it must be installed on the host.
-Will use an extra disk configured as the storage disk
+* NFS - Share file system across the network: between linux boxes.
+Special native NFS mount can be done also on Windows10
+* Samba - Share files from the network: between linux and windows boxes.
+
+Will use an extra disk configured as the storage disk.
+
+This example started with a vagrant ansible example for NFS.
+To use this version ansible must be installed on the host.
 
 To Run
 ------
+
+.. code-block:: bash
+
+   $ vagrant up
+   # 2 vms are spined up a server and a client
+   # Modify Vagrant file provisioner to change services deployed (nfs/smb)
+
+NFS Ansible Run
+---------------
 
 .. code-block:: bash
 
@@ -24,6 +39,7 @@ To Run
    $ . venv/bin/activate
    $ pip install ansible
 
+   # Change Vagrant server to use ansible playbook
    # Startup VM
    $ vagrant up
 
