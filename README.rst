@@ -9,8 +9,7 @@ STATUS: **COMPLETE: nfs,smb**
 
 Example for diffent file system examples.
 
-* NFS - Share file system across the network: between linux boxes.
-Special native NFS mount can be done also on Windows10
+* NFS - Share file system across the network: between linux boxes. Special native NFS mount can be done also on Windows10
 * Samba - Share files from the network: between linux and windows boxes.
 
 Will use an extra disk configured as the storage disk.

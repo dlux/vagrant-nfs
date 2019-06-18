@@ -1,6 +1,6 @@
 language: python
 before_install:
-  - echo -e '[nsf]\nlocalhost' > hosts
+  - echo -e '[nfs]\nlocalhost' > hosts
 install:
   - pip install ansible
   - pip install rstcheck
