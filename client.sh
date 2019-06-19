@@ -56,6 +56,23 @@ function test_samba_server {
     fi
 }
 
+function test_isci_target {
+    [[ -z "$1" ]] && echo "Error: provide server ip/name" && exit 1
+    _installer="${2:-yum install -y}"
+    $_installer iscsi-initiator-utils
+
+    server="$1"
+
+    # Discover the target
+    res=$(iscsiadm -m discoverydb -t sendtargets --portal $server --discover)
+    target=$(echo $res | awk '{print $NF}')
+    last_disk=$(lsblk |tail -1)
+    # Mount target disk
+    iscsiadm -m node --targetname $target --portal $server:3260 --login
+    new=$(lsblk | tail -1)
+    [[ "$new" == "$last_disk" ]] && echo "Error: Unable to mount" && exit 1
+}
+
 ######################### MAIN FLOW #######################################
 comrepo='https://github.com/dlux/InstallScripts/raw/master/common_functions'
 function _PrintHelp {
@@ -134,7 +151,7 @@ SetPackageManager
 [[ $_nfs == true ]] && test_nfs_server $_server $_folder "$_INSTALLER_CMD"
 [[ $_smb == true ]] && test_samba_server "$_server" "$_folder" "$_user" \
     "$_password"  "$_INSTALLER_CMD"
-#[[ $_isci == true ]] && test_isci_server "$_INSTALLER_CMD"
+[[ $_isci == true ]] && test_isci_target $_server "$_INSTALLER_CMD"
 
 echo 'COMPLETED'
 

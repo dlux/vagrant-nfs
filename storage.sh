@@ -8,6 +8,7 @@ set -o xtrace
 
 function fix_new_disk {
     dnum=${1:-1}
+    lvm=${2:-false}
     # Having an extra plain disk
     device_list=($(lsblk -n -p --output NAME | grep '^/'))
     device=${device_list[$dnum]}
@@ -15,24 +16,40 @@ function fix_new_disk {
     # use optimal and % to align partition
     fix=$(parted $device --script print 2>&1 | grep 'Error\|Warning')
     [[ -n $fix ]] && sgdisk -e $device
+
     parted -a optimal $device mkpart primary 0% 100%
-    # In case you want LVM
-    # parted $device --script set 4 lvm on
-    # Format partition - ext4, if HW RAID -- Calculate stripe & stripe width
-    # Calculate stripe if needed
-    #      mkfs.ext4 -E stride=256,stripe-width=512 /dev/sdb1
-    partition=$(fdisk -l /dev/sdb |tail -1 |awk '{print $1}'|tr -d ' ')
-    partition="$device$partition"
+
+    _n=$(fdisk -l $device |tail -1 |awk '{print $1}'|tr -d ' ')
+    partition="$device$_n"
     [[ $device == $partition ]] && echo 'ERROR: No partitioned' && return 1
-    mkfs.ext4 $partition
-    # Mount partition on the system
+
     mkdir -p $local_folder
-    mount $partition $local_folder
-    # Get partition UUID
-    _u=$(blkid | grep $partition | awk -F 'UUID=' '{print $2}' |
-            awk -F '"' '{print $2}')
-    # Mount partition after boot
-    printf "UUID=$_u  $local_folder  ext4  defaults  0  0" >> /etc/fstab
+
+    if [[ "$2" == 'lvm' ]]; then
+        return
+        # LVM preparation
+        parted $device --script set $_n lvm on
+        pvcreate $partition
+        vgcreate volg $partition
+        #lvcreate -l 50%VG or 50%FREE volg
+        lvcreate -l 100%VG -n dluxvol volg
+        mkfs.ext4 /dev/volg/dluxvol
+        mount /dev/volg/dluxvol $local_folder
+    else
+        # Format partition - ext4,
+        # if HW RAID -- Calculate stripe & stripe width
+        # Calculate stripe if needed
+        #    mkfs.ext4 -E istride=256,stripe-width=512 /dev/sdb1
+        mkfs.ext4 $partition
+        # Mount partition on the system
+        mount $partition $local_folder
+        # Get partition UUID
+        _u=$(blkid | grep $partition | awk -F 'UUID=' '{print $2}' |
+                awk -F '"' '{print $2}')
+        # Mount partition after boot
+        printf "UUID=$_u  $local_folder  ext4  defaults  0  0" >> /etc/fstab
+    fi
+
 }
 
 function disable_selinux {
@@ -46,13 +63,14 @@ function disable_selinux {
 }
 
 function setup_nfs_server {
-    # Install & Start NFS
     [[ -z "$1" ]] && echo "Error: provide local shared folder" && exit 1
     _installer="${2:-yum install -y}"
 
     local_folder="$1"
     mkdir -p "$local_folder"
     $_installer nfs-utils vim
+
+    fix_new_disk
 
     #service_list=(rpcbind nfs-server nfs-lock nfs-idmap)
     systemctl enable nfs-server
@@ -88,6 +106,8 @@ function setup_samba_server {
     local_folder="$1"
     smbuser="$2"
     smbpass="$3"
+
+    fix_new_disk
 
     # set user
     groupadd smbgrp
@@ -132,6 +152,40 @@ EOF
     fi
     disable_selinux
     printf '\n' | testparm
+}
+
+function setup_isci_target {
+    [[ -z "$1" ]] && echo "Error: provide local shared folder" && exit 1
+    local_folder="$1"
+    _installer="${2:-yum install -y}"
+
+    $_installer targetcli net-tools
+
+    fix_new_disk 1
+
+    systemctl start target
+    systemctl enable target
+    if [[ $(firewall-cmd --state) == 'running' ]]; then
+        firewall-cmd --add-service=iscsi-target --permanent
+        firewall-cmd --permanent --add-port=860/tcp
+        firewall-cmd --reload
+    fi
+    mkdir -p $local_folder/iscsitarget
+    # get eth1 - private network ip address
+    ip=$(ifconfig eth1|grep -m 1 inet | awk '{print $2}')
+    cmd='/backstores/fileio create disk01 '"$local_folder"
+    echo "$cmd/iscsitarget/disk01.img 1G" | targetcli
+    echo '/iscsi create iqn.2019-07.dlux.com:storage.target0' | targetcli
+    cmd='/iscsi/iqn.2019-07.dlux.com:storage.target0/tpg1/portals/'
+    echo "$cmd delete 0.0.0.0 3260" | targetcli
+    echo "$cmd create $ip" | targetcli
+    cmd='/iscsi/iqn.2019-07.dlux.com:storage.target0/tpg1/luns'
+    echo "$cmd create /backstores/fileio/disk01" | targetcli
+    cmd='/iscsi/iqn.2019-07.dlux.com:storage.target0/tpg1'
+    echo "$cmd set attribute authentication=0" | targetcli
+    echo "$cmd set attribute generate_node_acls=1" | targetcli
+    echo "$cmd set attribute demo_mode_write_protect=0" | targetcli
+    netstat   -an  |  grep -i    3260
 }
 
 ######################### MAIN FLOW #######################################
@@ -202,11 +256,10 @@ EnsureRoot
 SetPackageManager
 UpdatePackageManager
 $_INSTALLER_CMD gdisk
-fix_new_disk
 [[ $_nfs == true ]] && setup_nfs_server "$_folder" "$_INSTALLER_CMD"
-[[ $_smb == true ]] && setup_samba_server "$_folder" "$_user" "$_password" \
-    "$_INSTALLER_CMD"
-#[[ $_isci == true ]] && setup_isci_server "$_INSTALLER_CMD"
+[[ $_smb == true ]] && setup_samba_server "$_folder" "$_user" \
+    "$_password" "$_INSTALLER_CMD"
+[[ $_isci == true ]] && setup_isci_target "$_folder" "$_INSTALLER_CMD"
 
 echo 'COMPLETED'
 
@@ -221,3 +274,4 @@ echo 'COMPLETED'
 # Mount NFS on windows10 https://mapr.com/docs/51/DevelopmentGuide/c-mounting-nfs-on-a-windows-client.html
 # https://www.tecmint.com/installing-network-services-and-configuring-services-at-system-boot/
 # https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/system_administrators_guide/ch-file_and_print_servers#setting_up_samba_as_a_domain_member
+# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/storage_administration_guide/online-storage-management#osm-target-setup
