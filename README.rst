@@ -5,12 +5,13 @@ vagrant-storage
 .. image:: https://travis-ci.com/dlux/vagrant-storage.svg?branch=master
     :target: https://travis-ci.com/dlux/vagrant-storage
 
-STATUS: **COMPLETE: nfs,smb**
+STATUS: **COMPLETE: nfs,smb,iscsi**
 
 Example for diffent file system examples.
 
 * NFS - Share file system across the network: between linux boxes. Special native NFS mount can be done also on Windows10
 * Samba - Share files from the network: between linux and windows boxes.
+* ISCSI - Share block device across the network.
 
 Will use an extra disk configured as the storage disk.
 
@@ -24,7 +25,7 @@ To Run
 
    $ vagrant up
    # 2 vms are spined up a server and a client
-   # Modify Vagrant file provisioner to change services deployed (nfs/smb)
+   # Modify Vagrantfile provisioner to change services deployed (nfs/smb/iscsi)
 
 NFS Ansible Run
 ---------------
@@ -42,7 +43,9 @@ NFS Ansible Run
    # Startup VM
    $ vagrant up
 
-# Additional information on pip and virtualenv.
 
-# See: http://www.luzcazares.com/openstack/empaqueta-tus-proyectos-python/
+Additional information
+----------------------
+
+Go to  http://www.luzcazares.com/storage
 
