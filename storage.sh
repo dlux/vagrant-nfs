@@ -154,7 +154,7 @@ EOF
     printf '\n' | testparm
 }
 
-function setup_isci_target {
+function setup_iscsi_target {
     [[ -z "$1" ]] && echo "Error: provide local shared folder" && exit 1
     local_folder="$1"
     _installer="${2:-yum install -y}"
@@ -199,7 +199,7 @@ function _PrintHelp {
     echo " "
     echo "     --proxy  | -x     Uses given proxy server in the installation."
     echo "     --folder | -f     Use given folder name to be shared."
-    echo "     --isci   | -i     Installs isci protocol server services."
+    echo "     --iscsi  | -i     Installs iscsi protocol server services."
     echo "     --nfs    | -n     Installs nfs protocol server services."
     echo "     --smb    | -s     Installs samba protocol server services."
     echo "     --user   | -u     User name to use"
@@ -225,8 +225,8 @@ while [[ ${1} ]]; do
     --smb|-s)
         _smb=true
         ;;
-    --isci|-i)
-        _isci=true
+    --iscsi|-i)
+        _iscsi=true
         ;;
     --folder|-f)
         [[ -z "$2" || "$2" == -* ]] && echo "Error: Missing dir name" && exit 1
@@ -259,7 +259,7 @@ $_INSTALLER_CMD gdisk
 [[ $_nfs == true ]] && setup_nfs_server "$_folder" "$_INSTALLER_CMD"
 [[ $_smb == true ]] && setup_samba_server "$_folder" "$_user" \
     "$_password" "$_INSTALLER_CMD"
-[[ $_isci == true ]] && setup_isci_target "$_folder" "$_INSTALLER_CMD"
+[[ $_iscsi == true ]] && setup_iscsi_target "$_folder" "$_INSTALLER_CMD"
 
 echo 'COMPLETED'
 
